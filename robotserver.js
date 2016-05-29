@@ -16,26 +16,28 @@ robotData.port = robotData.address.split('.')[3] + '000';
 robotData.mac = networkInterfaces.wlan0[0].mac;
 robotData.odometer = 0;
 
-// var irobot = require('./irobot');
-// var robot = new irobot.Robot('/dev/ttyUSB0');
+var irobot = require('./irobot');
+var robot = new irobot.Robot('/dev/ttyUSB0');
 
-// robot.on('sensordata', function(data) {
-//     robotData.odometer += data.state.distance.millimeters;
-//     if (data.state.mode.passive == true) robotData.mode = "passive";
-//     if (data.state.mode.safe == true) robotData.mode = "safe";
-//     if (data.state.mode.full == true) robotData.mode = "full";
-//     robotData.battery = data.battery.voltage.volts;
-//     robotData.bumper_left = data.bumpers.left.activated;
-//     robotData.bumper_right = data.bumpers.right.activated;
-//     robotData.cliff_left = data.cliff_sensors.left.signal.raw;
-//     robotData.cliff_front_left = data.cliff_sensors.front_left.signal.raw;
-//     robotData.cliff_front_right = data.cliff_sensors.front_right.signal.raw;
-//     robotData.cliff_right = data.cliff_sensors.right.signal.raw;
-//     //Stop a bot that has not been reached for 5 seconds.
-//     if ((Date.now() - robotData.timestamp) > 5000)
-//         robot.drive({ left: '0', right: '0' });
-//     //console.log(JSON.stringify(data, null, 4));
-// });
+robot.on('sensordata', function(data) {
+    robotData.odometer += data.state.distance.millimeters;
+    if (data.state.mode.passive == true) robotData.mode = "passive";
+    if (data.state.mode.safe == true) robotData.mode = "safe";
+    if (data.state.mode.full == true) robotData.mode = "full";
+    robotData.battery = data.battery.voltage.volts;
+    robotData.bumper_left = data.bumpers.left.activated;
+    robotData.bumper_right = data.bumpers.right.activated;
+    robotData.cliff_left = data.cliff_sensors.left.signal.raw;
+    robotData.cliff_front_left = data.cliff_sensors.front_left.signal.raw;
+    robotData.cliff_front_right = data.cliff_sensors.front_right.signal.raw;
+    robotData.cliff_right = data.cliff_sensors.right.signal.raw;
+    robotData.vL = data.state.requested_right_velocity;
+    robotData.vR = data.state.requested_right_velocity;
+    //Stop a bot that has not been reached for 5 seconds.
+    if ((Date.now() - robotData.timestamp) > 5000)
+        robot.drive({ left: '0', right: '0' });
+    //console.log(JSON.stringify(robotData.vR, null, 4));
+});
 
 function getRobotSensors() {
     robotData.counter++;
@@ -50,10 +52,13 @@ app.all('/robotsensors', function(req, res) {
 
 app.all('/drive', function(req, res) {
     res.setHeader("Access-Control-Allow-Origin", "*");
-    //if (robotData.mode == "passive") robot.safeMode();
+    if (robotData.mode == "passive") robot.safeMode();
     console.log(req.body);
-    //console.log(JSON.parse(req.body));
+    console.log(JSON.parse(req.body));
+    robot.drive(JSON.parse(req.body));
     res.send();
+    console.log(JSON.stringify(sensors, null, 4));
+
 });
 
 port = 2001;
@@ -69,7 +74,17 @@ function getData() {
     IMU.getValue(function(err, data) {
         if (err) throw err;
         sensors = data;
-        sensors.counter = counter++
+        sensors.counter = counter++;
+        getRobotSensors();
+        sensors.battery = robotData.battery;
+        sensors.odometer = robotData.odometer
+        sensors.vL = robotData.vL
+        sensors.vR = robotData.vR
+        sensors.cliff_left = robotData.cliff_left
+        sensors.cliff_front_left = robotData.cliff_front_left
+        sensors.cliff_front_right = robotData.cliff_front_right
+        sensors.cliff_right = robotData.cliff_right
+
     });
 }
 getData();
